@@ -1,0 +1,12 @@
+# syntax=docker/dockerfile:1
+
+# 一次性验收服务：先跑 Vitest 几何边界测试，再对 web 服务跑 Playwright 主链路测试。
+# 基础镜像自带的浏览器版本与 package.json 中锁定的 @playwright/test 一致。
+FROM mcr.microsoft.com/playwright:v1.47.2-jammy
+WORKDIR /app
+# 基础镜像已内置匹配版本的浏览器，跳过 npm 安装时的重复下载
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+CMD ["sh", "-c", "npx vitest run && node scripts/wait-for-web.mjs && npx playwright test"]
