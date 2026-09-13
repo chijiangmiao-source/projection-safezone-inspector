@@ -170,6 +170,35 @@ input[data-testid$='-name'] {
   margin: 0 0 8px;
 }
 
+.adjust-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.adjust-bar .btn[aria-pressed='true'] {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.candidate-coords {
+  font-size: 0.85rem;
+  color: #86efac;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 调整模式下的安全区：移动光标 + 禁止触摸滚动触发 pointercancel */
+.safe-zone.draggable {
+  cursor: move;
+  touch-action: none;
+}
+
+.safe-zone.draggable rect {
+  stroke-width: 3;
+}
+
 .stage svg {
   display: block;
   width: 100%;

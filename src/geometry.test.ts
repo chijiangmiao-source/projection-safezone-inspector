@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   classifyOverlap,
+  clampRectToCanvas,
+  clientToView,
   evaluateObstruction,
   evaluateScene,
   overlapLengths,
@@ -167,6 +169,92 @@ describe('validateScene', () => {
     const scene = baseScene();
     scene.obstructions[0].name = '   ';
     expect(validateScene(scene).join()).toContain('名称不能为空');
+  });
+});
+
+describe('clientToView', () => {
+  // 1920×1080 的 viewBox 渲染在 left=100、top=50、760×427.5 的区域内
+  const bounds = { left: 100, top: 50, width: 760, height: 427.5 };
+  const view = { width: 1920, height: 1080 };
+
+  it('元素左上角映射为视图原点', () => {
+    expect(clientToView(100, 50, bounds, view)).toEqual({ x: 0, y: 0 });
+  });
+
+  it('元素右下角映射为画布右下角', () => {
+    const p = clientToView(860, 477.5, bounds, view);
+    expect(p.x).toBeCloseTo(1920, 10);
+    expect(p.y).toBeCloseTo(1080, 10);
+  });
+
+  it('按渲染比例换算中间点', () => {
+    const p = clientToView(480, 263.75, bounds, view);
+    expect(p.x).toBeCloseTo(960, 10);
+    expect(p.y).toBeCloseTo(540, 10);
+  });
+
+  it('非等比缩放时 x、y 各自按比例换算', () => {
+    const stretched = { left: 0, top: 0, width: 500, height: 200 };
+    expect(clientToView(250, 50, stretched, { width: 1000, height: 800 })).toEqual({
+      x: 500,
+      y: 200,
+    });
+  });
+
+  it('元素外的屏幕坐标换算为视图范围外的值（交由钳制处理）', () => {
+    const p = clientToView(40, 500, bounds, view);
+    expect(p.x).toBeLessThan(0);
+    expect(p.y).toBeGreaterThan(1080);
+  });
+});
+
+describe('clampRectToCanvas', () => {
+  const canvas = { width: 1920, height: 1080 };
+  // 安全区 960×540：合法范围 x ∈ [0, 960]，y ∈ [0, 540]
+  const clamp = (x: number, y: number) => clampRectToCanvas(x, y, 960, 540, canvas);
+
+  it('画布内位置四舍五入为最近整数像素', () => {
+    expect(clamp(100.4, 200.4)).toEqual({ x: 100, y: 200 });
+    expect(clamp(100.5, 200.6)).toEqual({ x: 101, y: 201 });
+  });
+
+  it('画布内的整数位置保持不变', () => {
+    expect(clamp(480, 270)).toEqual({ x: 480, y: 270 });
+  });
+
+  it('越出左边界钳制到 x = 0', () => {
+    expect(clamp(-3, 270)).toEqual({ x: 0, y: 270 });
+    expect(clamp(-0.4, 270)).toEqual({ x: 0, y: 270 });
+  });
+
+  it('越出上边界钳制到 y = 0', () => {
+    expect(clamp(480, -12)).toEqual({ x: 480, y: 0 });
+  });
+
+  it('越出右边界钳制到 画布宽 − 矩形宽', () => {
+    expect(clamp(1500, 270)).toEqual({ x: 960, y: 270 });
+    expect(clamp(960.6, 270)).toEqual({ x: 960, y: 270 });
+  });
+
+  it('越出下边界钳制到 画布高 − 矩形高', () => {
+    expect(clamp(480, 999)).toEqual({ x: 480, y: 540 });
+    expect(clamp(480, 540.6)).toEqual({ x: 480, y: 540 });
+  });
+
+  it('先取整再钳制：边界上的小数得到最近合法整数', () => {
+    // 959.6 取整为 960，恰好是最大合法值
+    expect(clamp(959.6, 539.6)).toEqual({ x: 960, y: 540 });
+    // 960.4 取整为 960，不越界
+    expect(clamp(960.4, 540.4)).toEqual({ x: 960, y: 540 });
+  });
+
+  it('矩形贴齐画布边缘是合法位置', () => {
+    expect(clamp(0, 0)).toEqual({ x: 0, y: 0 });
+    expect(clamp(960, 540)).toEqual({ x: 960, y: 540 });
+  });
+
+  it('矩形大于画布时钳制到原点（防御性）', () => {
+    expect(clampRectToCanvas(50, 50, 5000, 2000, canvas)).toEqual({ x: 0, y: 0 });
   });
 });
 

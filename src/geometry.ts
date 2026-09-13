@@ -89,6 +89,50 @@ export function evaluateScene(scene: Scene): SceneResult {
   };
 }
 
+/** 元素在视口中的位置与尺寸（与 getBoundingClientRect 的返回值同形）。 */
+export interface ViewBounds {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * 把指针的屏幕（client）坐标换算为 SVG 视图坐标。
+ * 画布 viewBox 与渲染宽高比一致，按比例映射即可；结果不做取整与钳制。
+ */
+export function clientToView(
+  clientX: number,
+  clientY: number,
+  bounds: ViewBounds,
+  view: CanvasSize,
+): { x: number; y: number } {
+  return {
+    x: ((clientX - bounds.left) / bounds.width) * view.width,
+    y: ((clientY - bounds.top) / bounds.height) * view.height,
+  };
+}
+
+/**
+ * 把矩形左上角位置取整为最近整数像素，并钳制到画布内：
+ * x ∈ [0, 画布宽 − 矩形宽]，y ∈ [0, 画布高 − 矩形高]。
+ * 先取整再钳制，越界输入得到最近合法整数位置。
+ */
+export function clampRectToCanvas(
+  x: number,
+  y: number,
+  rectWidth: number,
+  rectHeight: number,
+  canvas: CanvasSize,
+): { x: number; y: number } {
+  const maxX = Math.max(0, canvas.width - rectWidth);
+  const maxY = Math.max(0, canvas.height - rectHeight);
+  return {
+    x: Math.min(Math.max(Math.round(x), 0), maxX),
+    y: Math.min(Math.max(Math.round(y), 0), maxY),
+  };
+}
+
 /** 整数必然有限，Number.isInteger 同时拒绝 NaN 与 Infinity。 */
 const isInt = (n: number): boolean => Number.isInteger(n);
 

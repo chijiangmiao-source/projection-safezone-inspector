@@ -19,6 +19,15 @@
   - 任一方向交叠 < 0 → **安全**（完全分离）。
 - **结果**：总体结论横幅、逐项判定（含交叠宽高）、三色画布可视化（蓝=安全、琥珀=接触边界、红=真实遮挡，深红标出交叠区域），合法结果可下载为 JSON（含画布、矩形与逐项判定）。
 
+## 调整安全区（拖拽改位）
+
+出现真实遮挡后，可在结果页点击 **调整安全区** 直接进入拖拽改位，不必手算坐标重新填表：
+
+- 开启后画布中的安全区变为可拖拽矩形；指针位置按 SVG 视图比例换算为整数像素，并始终钳制在画布内（越界拖动取最近合法整数位置）。
+- 拖动期间实时重算总览横幅、逐项判定与交叠着色；入口旁同步显示候选坐标。
+- 松开指针后候选坐标写回安全区表单并保留最新结论，再次点击「核验」仍走原有校验链路；浏览器取消指针事件（pointercancel）时自动回退到拖动前的位置。
+- 触点落在安全区之外不会启动拖拽；场景结构与下载 JSON 格式保持不变。
+
 ## 运行（Docker Compose）
 
 ```bash
@@ -79,11 +88,12 @@ npm run build          # 类型检查并产出 dist/
 ## 目录结构
 
 ```
-src/geometry.ts        核心：交叠计算、遮挡分类、场景校验（纯函数，无 UI 依赖）
-src/geometry.test.ts   Vitest：共边/共点/包含/1px 交叠/非法输入等边界
-src/App.tsx            录入表单、错误展示、逐项判定与 JSON 下载
-src/StageView.tsx      SVG 画布：安全区 + 三色遮挡矩形 + 交叠区域
+src/geometry.ts        核心：交叠计算、遮挡分类、场景校验、视图坐标换算与画布钳制（纯函数，无 UI 依赖）
+src/geometry.test.ts   Vitest：共边/共点/包含/1px 交叠/非法输入/坐标换算/取整/四边钳制等边界
+src/App.tsx            录入表单、错误展示、逐项判定、调整安全区模式与 JSON 下载
+src/StageView.tsx      SVG 画布：安全区（调整模式下可拖拽）+ 三色遮挡矩形 + 交叠区域
 e2e/main-flow.spec.ts  Playwright：录入到结果的主链路
+e2e/adjust-safe-zone.spec.ts Playwright：拖拽调整、取消回退、边缘钳制与兼容性
 Dockerfile             多阶段构建，nginx 托管静态产物
 Dockerfile.verify      一次性验收镜像（Vitest + Playwright）
 docker-compose.yml     web（WEB_PORT 覆盖端口）与 verify 服务
